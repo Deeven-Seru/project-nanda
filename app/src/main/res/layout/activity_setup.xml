@@ -1,92 +1,131 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="32dp"
-    android:background="#121212">
+    android:gravity="center_horizontal"
+    android:padding="32dp">
+
+    <!-- Spacer -->
+    <View android:layout_width="0dp" android:layout_height="48dp" />
+
+    <!-- App icon placeholder -->
+    <TextView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:gravity="center"
+        android:text="\u25C9"
+        android:textSize="40sp"
+        android:textColor="@color/accent"
+        android:layout_marginBottom="16dp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Project Nanda"
-        android:textSize="28sp"
-        android:textColor="#FFFFFF"
+        android:textSize="26sp"
+        android:textColor="@color/text_primary"
         android:textStyle="bold"
-        android:layout_marginBottom="8dp" />
+        android:letterSpacing="0.05"
+        android:layout_marginBottom="4dp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Magic Trackpad for macOS"
-        android:textSize="16sp"
-        android:textColor="#AAAAAA"
-        android:layout_marginBottom="40dp" />
+        android:text="Magic Trackpad"
+        android:textSize="14sp"
+        android:textColor="@color/text_secondary"
+        android:letterSpacing="0.15"
+        android:layout_marginBottom="48dp" />
 
+    <!-- Status -->
     <TextView
         android:id="@+id/status_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Checking setup..."
-        android:textSize="18sp"
-        android:textColor="#BB86FC"
-        android:textStyle="bold"
-        android:layout_marginBottom="24dp" />
+        android:textSize="16sp"
+        android:textColor="@color/accent"
+        android:layout_marginBottom="28dp" />
 
+    <!-- Steps card -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="#1E1E1E"
-        android:padding="20dp"
+        android:background="@color/surface"
+        android:padding="24dp"
         android:layout_marginBottom="32dp">
 
         <TextView
             android:id="@+id/step1_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="1. Bluetooth Permissions"
-            android:textSize="15sp"
-            android:textColor="#CCCCCC"
-            android:layout_marginBottom="12dp" />
+            android:text="Bluetooth Permissions"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="16dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/surface_light"
+            android:layout_marginBottom="16dp" />
 
         <TextView
             android:id="@+id/step2_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="2. Bluetooth Enabled"
-            android:textSize="15sp"
-            android:textColor="#CCCCCC"
-            android:layout_marginBottom="12dp" />
+            android:text="Bluetooth Enabled"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="16dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/surface_light"
+            android:layout_marginBottom="16dp" />
 
         <TextView
             android:id="@+id/step3_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="3. Ready to Connect"
-            android:textSize="15sp"
-            android:textColor="#CCCCCC" />
+            android:text="Ready to Connect"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary" />
 
     </LinearLayout>
 
-    <Button
-        android:id="@+id/action_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Continue"
-        android:textSize="16sp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="12dp" />
-
+    <!-- Action button -->
     <TextView
+        android:id="@+id/action_button"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:gravity="center"
+        android:text="Continue"
+        android:textSize="15sp"
+        android:textColor="@color/bg_dark"
+        android:textStyle="bold"
+        android:background="@color/accent"
+        android:letterSpacing="0.05"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Hint -->
+    <TextView
+        android:id="@+id/last_device_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Long-press trackpad surface for keyboard"
+        android:text=""
         android:textSize="12sp"
-        android:textColor="#666666"
-        android:layout_marginTop="24dp" />
+        android:textColor="@color/text_dim"
+        android:visibility="gone" />
 
 </LinearLayout>
+</ScrollView>
