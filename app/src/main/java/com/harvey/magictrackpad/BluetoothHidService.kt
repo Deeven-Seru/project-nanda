@@ -3,6 +3,7 @@ package com.harvey.magictrackpad
 import android.annotation.SuppressLint
 import android.app.Service
 import android.bluetooth.*
+import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
@@ -32,7 +33,7 @@ class BluetoothHidService : Service() {
             updateStatus("No Bluetooth hardware")
             return
         }
-        updateStatus("Registering HID profile...")
+        updateStatus("Registering HID...")
         adapter.getProfileProxy(this, object : BluetoothProfile.ServiceListener {
             override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
                 if (profile == BluetoothProfile.HID_DEVICE) {
@@ -43,7 +44,7 @@ class BluetoothHidService : Service() {
             override fun onServiceDisconnected(profile: Int) {
                 if (profile == BluetoothProfile.HID_DEVICE) {
                     bluetoothHidDevice = null
-                    updateStatus("HID profile disconnected")
+                    updateStatus("HID disconnected")
                 }
             }
         }, BluetoothProfile.HID_DEVICE)
@@ -61,7 +62,8 @@ class BluetoothHidService : Service() {
         bluetoothHidDevice?.registerApp(sdp, null, null, mainExecutor, object : BluetoothHidDevice.Callback() {
             override fun onAppStatusChanged(pluggedDevice: BluetoothDevice?, registered: Boolean) {
                 if (registered) {
-                    updateStatus("HID registered. Pair from Mac > Bluetooth Settings")
+                    updateStatus("HID ready. Pair from Mac > Bluetooth")
+                    tryReconnectLastDevice()
                 } else {
                     updateStatus("HID registration failed")
                 }
@@ -71,17 +73,41 @@ class BluetoothHidService : Service() {
                     BluetoothProfile.STATE_CONNECTED -> {
                         connectedDevice = device
                         isConnected = true
-                        updateStatus("Connected to ${device.name ?: device.address}")
+                        saveLastDevice(device)
+                        updateStatus("Connected: ${device.name ?: device.address}")
                     }
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         connectedDevice = null
                         isConnected = false
-                        updateStatus("Disconnected. Waiting for reconnection...")
+                        updateStatus("Disconnected. Waiting...")
                     }
                     BluetoothProfile.STATE_CONNECTING -> updateStatus("Connecting...")
                 }
             }
         })
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun tryReconnectLastDevice() {
+        val prefs = getSharedPreferences(SetupActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val lastAddress = prefs.getString(SetupActivity.KEY_LAST_DEVICE, null) ?: return
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return
+        try {
+            val device = adapter.getRemoteDevice(lastAddress)
+            updateStatus("Reconnecting to ${device.name ?: lastAddress}...")
+            bluetoothHidDevice?.connect(device)
+        } catch (e: Exception) {
+            Log.d("HID", "Auto-reconnect failed: ${e.message}")
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun saveLastDevice(device: BluetoothDevice) {
+        val prefs = getSharedPreferences(SetupActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(SetupActivity.KEY_LAST_DEVICE, device.address)
+            .putString(SetupActivity.KEY_LAST_DEVICE_NAME, device.name ?: device.address)
+            .apply()
     }
 
     private fun updateStatus(msg: String) {
@@ -90,7 +116,6 @@ class BluetoothHidService : Service() {
         onStatusChanged?.invoke(msg)
     }
 
-    // Mouse report: [buttons, dx, dy, scroll]
     @SuppressLint("MissingPermission")
     fun sendMouseMove(dx: Int, dy: Int) {
         val device = connectedDevice ?: return
@@ -101,17 +126,14 @@ class BluetoothHidService : Service() {
     @SuppressLint("MissingPermission")
     fun sendClick(button: Int = 1) {
         val device = connectedDevice ?: return
-        // Press
         bluetoothHidDevice?.sendReport(device, 2, byteArrayOf(button.toByte(), 0, 0, 0))
-        // Release
         bluetoothHidDevice?.sendReport(device, 2, byteArrayOf(0, 0, 0, 0))
     }
 
     @SuppressLint("MissingPermission")
     fun sendScroll(amount: Int) {
         val device = connectedDevice ?: return
-        val report = byteArrayOf(0, 0, 0, amount.coerceIn(-127, 127).toByte())
-        bluetoothHidDevice?.sendReport(device, 2, report)
+        bluetoothHidDevice?.sendReport(device, 2, byteArrayOf(0, 0, 0, amount.coerceIn(-127, 127).toByte()))
     }
 
     @SuppressLint("MissingPermission")
@@ -121,7 +143,6 @@ class BluetoothHidService : Service() {
         report[0] = modifier
         report[2] = key
         bluetoothHidDevice?.sendReport(device, 1, report)
-        // Key release
         bluetoothHidDevice?.sendReport(device, 1, ByteArray(8))
     }
 }
