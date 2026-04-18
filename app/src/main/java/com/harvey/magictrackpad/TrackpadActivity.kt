@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.view.*
 import android.view.inputmethod.InputMethodManager
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
@@ -39,14 +40,14 @@ class TrackpadActivity : AppCompatActivity() {
                 hidService = binder.getService()
                 isBound = true
                 hidService?.onStatusChanged = { msg -> updateStatus(msg) }
-                updateStatus(hidService?.connectionStatus ?: "Service connected")
+                updateStatus(hidService?.connectionStatus ?: "Connected")
             } catch (e: Exception) {
-                updateStatus("Service error: ${e.message}")
+                updateStatus("Error: ${e.message}")
             }
         }
         override fun onServiceDisconnected(name: ComponentName?) {
             isBound = false
-            updateStatus("Service disconnected")
+            updateStatus("Disconnected")
         }
     }
 
@@ -59,10 +60,29 @@ class TrackpadActivity : AppCompatActivity() {
         statusView = findViewById(R.id.trackpad_status)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        val lp = window.attributes
-        lp.screenBrightness = 0.01f
-        window.attributes = lp
 
+        // Load saved brightness or default to very dim
+        val prefs = getSharedPreferences(SetupActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val savedBrightness = prefs.getInt("brightness", 1)
+        setBrightness(savedBrightness)
+
+        // Brightness slider
+        val slider = findViewById<SeekBar>(R.id.brightness_slider)
+        slider.progress = savedBrightness
+        slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) setBrightness(progress)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                prefs.edit().putInt("brightness", seekBar?.progress ?: 1).apply()
+            }
+        })
+
+        // Keyboard button
+        findViewById<View>(R.id.keyboard_button).setOnClickListener { showKeyboard() }
+
+        // Bind HID service
         try {
             Intent(this, BluetoothHidService::class.java).also {
                 bindService(it, connection, Context.BIND_AUTO_CREATE)
@@ -72,22 +92,19 @@ class TrackpadActivity : AppCompatActivity() {
             return
         }
 
-        // Keyboard button - only opens keyboard when YOU tap it
-        findViewById<View>(R.id.keyboard_button).setOnClickListener {
-            showKeyboard()
-        }
-
-        // Double-tap status to toggle visibility
-        statusView?.setOnClickListener {
-            statusView?.visibility = View.GONE
-        }
-
+        // Trackpad surface
         val surface = findViewById<View>(R.id.trackpad_surface)
         surface.setOnTouchListener { _, event ->
             handleTouch(event)
             true
         }
-        updateStatus("Starting HID service...")
+        updateStatus("Starting...")
+    }
+
+    private fun setBrightness(level: Int) {
+        val lp = window.attributes
+        lp.screenBrightness = (level.coerceIn(1, 100) / 100f).coerceIn(0.01f, 1f)
+        window.attributes = lp
     }
 
     private fun handleTouch(event: MotionEvent) {
@@ -104,7 +121,6 @@ class TrackpadActivity : AppCompatActivity() {
                 touchDownY = event.y
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
-                // Second finger down = switch to scroll mode
                 if (pointerCount >= 2) {
                     scrolling = true
                     tracking = false
@@ -113,16 +129,13 @@ class TrackpadActivity : AppCompatActivity() {
             }
             MotionEvent.ACTION_MOVE -> {
                 if (scrolling && pointerCount >= 2) {
-                    // Two-finger scroll
                     val currentY = event.getY(0)
-                    val deltaY = lastScrollY - currentY
-                    val scrollAmount = (deltaY * SCROLL_SENSITIVITY).toInt()
+                    val scrollAmount = ((lastScrollY - currentY) * SCROLL_SENSITIVITY).toInt()
                     if (scrollAmount != 0) {
                         try { hidService?.sendScroll(scrollAmount) } catch (_: Exception) {}
                         lastScrollY = currentY
                     }
                 } else if (tracking && pointerCount == 1 && !scrolling) {
-                    // Single-finger cursor movement
                     val dx = ((event.x - lastX) * SENSITIVITY).toInt()
                     val dy = ((event.y - lastY) * SENSITIVITY).toInt()
                     if (dx != 0 || dy != 0) {
@@ -133,7 +146,6 @@ class TrackpadActivity : AppCompatActivity() {
                 }
             }
             MotionEvent.ACTION_UP -> {
-                // Tap-to-click: short tap with minimal movement
                 if (!scrolling) {
                     val elapsed = System.currentTimeMillis() - touchDownTime
                     val dist = kotlin.math.hypot(
@@ -148,7 +160,6 @@ class TrackpadActivity : AppCompatActivity() {
                 scrolling = false
             }
             MotionEvent.ACTION_POINTER_UP -> {
-                // When lifting second finger, don't resume tracking
                 if (pointerCount <= 2) {
                     scrolling = false
                     tracking = false

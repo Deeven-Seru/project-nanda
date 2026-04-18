@@ -13,22 +13,55 @@
         android:id="@+id/trackpad_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="8dp"
         android:text="Initializing..."
-        android:textColor="#333333"
-        android:textSize="14sp" />
+        android:textColor="#222222"
+        android:textSize="12sp" />
 
-    <!-- Keyboard button in bottom-right corner -->
-    <TextView
-        android:id="@+id/keyboard_button"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="12dp"
-        android:gravity="center"
-        android:text="\u2328"
-        android:textSize="28sp"
-        android:textColor="#444444"
-        android:background="#1A1A1A" />
+    <!-- Bottom controls bar -->
+    <LinearLayout
+        android:id="@+id/controls_bar"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_gravity="bottom"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:background="#0D0D0D"
+        android:orientation="horizontal">
+
+        <!-- Brightness icon -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="\u2600"
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Brightness slider -->
+        <SeekBar
+            android:id="@+id/brightness_slider"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="1"
+            android:progressTint="#444444"
+            android:thumbTint="#666666" />
+
+        <!-- Keyboard button -->
+        <TextView
+            android:id="@+id/keyboard_button"
+            android:layout_width="44dp"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:text="\u2328"
+            android:textSize="22sp"
+            android:textColor="#444444"
+            android:layout_marginStart="12dp" />
+
+    </LinearLayout>
 
 </FrameLayout>
