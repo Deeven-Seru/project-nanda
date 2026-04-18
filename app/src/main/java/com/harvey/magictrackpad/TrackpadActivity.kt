@@ -16,16 +16,13 @@ class TrackpadActivity : AppCompatActivity() {
     private var hidService: BluetoothHidService? = null
     private var isBound = false
 
-    // Track last touch position for relative movement
     private var lastX = 0f
     private var lastY = 0f
     private var tracking = false
 
-    // Two-finger scroll tracking
     private var lastScrollY = 0f
     private var scrolling = false
 
-    // Tap detection
     private var touchDownTime = 0L
     private var touchDownX = 0f
     private var touchDownY = 0f
@@ -33,7 +30,7 @@ class TrackpadActivity : AppCompatActivity() {
     private val SENSITIVITY = 1.8f
     private val TAP_THRESHOLD_MS = 200
     private val TAP_MOVE_THRESHOLD = 20f
-    private val SCROLL_SENSITIVITY = 0.3f
+    private val SCROLL_SENSITIVITY = 0.5f
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -75,17 +72,18 @@ class TrackpadActivity : AppCompatActivity() {
             return
         }
 
-        val surface = findViewById<View>(R.id.trackpad_surface)
-        val gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onLongPress(e: MotionEvent) { showKeyboard() }
-            override fun onDoubleTap(e: MotionEvent): Boolean {
-                statusView?.visibility = if (statusView?.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                return true
-            }
-        })
+        // Keyboard button - only opens keyboard when YOU tap it
+        findViewById<View>(R.id.keyboard_button).setOnClickListener {
+            showKeyboard()
+        }
 
+        // Double-tap status to toggle visibility
+        statusView?.setOnClickListener {
+            statusView?.visibility = View.GONE
+        }
+
+        val surface = findViewById<View>(R.id.trackpad_surface)
         surface.setOnTouchListener { _, event ->
-            gestureDetector.onTouchEvent(event)
             handleTouch(event)
             true
         }
@@ -106,21 +104,25 @@ class TrackpadActivity : AppCompatActivity() {
                 touchDownY = event.y
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
-                if (pointerCount == 2) {
+                // Second finger down = switch to scroll mode
+                if (pointerCount >= 2) {
                     scrolling = true
                     tracking = false
-                    lastScrollY = (event.getY(0) + event.getY(1)) / 2f
+                    lastScrollY = event.getY(0)
                 }
             }
             MotionEvent.ACTION_MOVE -> {
                 if (scrolling && pointerCount >= 2) {
-                    val currentScrollY = (event.getY(0) + event.getY(1)) / 2f
-                    val dy = (lastScrollY - currentScrollY) * SCROLL_SENSITIVITY
-                    if (kotlin.math.abs(dy) > 0.5f) {
-                        try { hidService?.sendScroll(dy.toInt()) } catch (_: Exception) {}
-                        lastScrollY = currentScrollY
+                    // Two-finger scroll
+                    val currentY = event.getY(0)
+                    val deltaY = lastScrollY - currentY
+                    val scrollAmount = (deltaY * SCROLL_SENSITIVITY).toInt()
+                    if (scrollAmount != 0) {
+                        try { hidService?.sendScroll(scrollAmount) } catch (_: Exception) {}
+                        lastScrollY = currentY
                     }
-                } else if (tracking && pointerCount == 1) {
+                } else if (tracking && pointerCount == 1 && !scrolling) {
+                    // Single-finger cursor movement
                     val dx = ((event.x - lastX) * SENSITIVITY).toInt()
                     val dy = ((event.y - lastY) * SENSITIVITY).toInt()
                     if (dx != 0 || dy != 0) {
@@ -131,16 +133,30 @@ class TrackpadActivity : AppCompatActivity() {
                 }
             }
             MotionEvent.ACTION_UP -> {
-                val elapsed = System.currentTimeMillis() - touchDownTime
-                val moveDist = kotlin.math.hypot((event.x - touchDownX).toDouble(), (event.y - touchDownY).toDouble())
-                if (elapsed < TAP_THRESHOLD_MS && moveDist < TAP_MOVE_THRESHOLD && !scrolling) {
-                    try { hidService?.sendClick() } catch (_: Exception) {}
+                // Tap-to-click: short tap with minimal movement
+                if (!scrolling) {
+                    val elapsed = System.currentTimeMillis() - touchDownTime
+                    val dist = kotlin.math.hypot(
+                        (event.x - touchDownX).toDouble(),
+                        (event.y - touchDownY).toDouble()
+                    )
+                    if (elapsed < TAP_THRESHOLD_MS && dist < TAP_MOVE_THRESHOLD) {
+                        try { hidService?.sendClick() } catch (_: Exception) {}
+                    }
                 }
                 tracking = false
                 scrolling = false
             }
             MotionEvent.ACTION_POINTER_UP -> {
-                if (pointerCount <= 2) scrolling = false
+                // When lifting second finger, don't resume tracking
+                if (pointerCount <= 2) {
+                    scrolling = false
+                    tracking = false
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                tracking = false
+                scrolling = false
             }
         }
     }

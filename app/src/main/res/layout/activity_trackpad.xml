@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/trackpad_surface"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000">
+
+    <View
+        android:id="@+id/trackpad_surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <TextView
         android:id="@+id/trackpad_status"
@@ -13,5 +17,18 @@
         android:text="Initializing..."
         android:textColor="#333333"
         android:textSize="14sp" />
+
+    <!-- Keyboard button in bottom-right corner -->
+    <TextView
+        android:id="@+id/keyboard_button"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="12dp"
+        android:gravity="center"
+        android:text="\u2328"
+        android:textSize="28sp"
+        android:textColor="#444444"
+        android:background="#1A1A1A" />
 
 </FrameLayout>
