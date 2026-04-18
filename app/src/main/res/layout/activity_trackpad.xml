@@ -9,6 +9,18 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Hidden EditText to capture keyboard input -->
+    <EditText
+        android:id="@+id/hidden_input"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:alpha="0"
+        android:background="@null"
+        android:textColor="#00000000"
+        android:cursorVisible="false"
+        android:inputType="text"
+        android:importantForAutofill="no" />
+
     <TextView
         android:id="@+id/trackpad_status"
         android:layout_width="wrap_content"
@@ -31,7 +43,6 @@
         android:background="#0D0D0D"
         android:orientation="horizontal">
 
-        <!-- Brightness icon -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -40,7 +51,6 @@
             android:textColor="#333333"
             android:layout_marginEnd="8dp" />
 
-        <!-- Brightness slider -->
         <SeekBar
             android:id="@+id/brightness_slider"
             android:layout_width="0dp"
@@ -51,7 +61,6 @@
             android:progressTint="#444444"
             android:thumbTint="#666666" />
 
-        <!-- Keyboard button -->
         <TextView
             android:id="@+id/keyboard_button"
             android:layout_width="44dp"
