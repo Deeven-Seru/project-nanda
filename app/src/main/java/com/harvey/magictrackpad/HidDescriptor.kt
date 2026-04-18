@@ -2,7 +2,7 @@ package com.harvey.magictrackpad
 
 object HidDescriptor {
     val DESCRIPTOR = byteArrayOf(
-        // Keyboard
+        // Keyboard (Report ID 1)
         0x05.toByte(), 0x01.toByte(),         // USAGE_PAGE (Generic Desktop)
         0x09.toByte(), 0x06.toByte(),         // USAGE (Keyboard)
         0xa1.toByte(), 0x01.toByte(),         // COLLECTION (Application)
@@ -18,15 +18,6 @@ object HidDescriptor {
         0x95.toByte(), 0x01.toByte(),         // REPORT_COUNT (1)
         0x75.toByte(), 0x08.toByte(),         // REPORT_SIZE (8)
         0x81.toByte(), 0x03.toByte(),         // INPUT (Cnst,Var,Abs)
-        0x95.toByte(), 0x05.toByte(),         // REPORT_COUNT (5)
-        0x75.toByte(), 0x01.toByte(),         // REPORT_SIZE (1)
-        0x05.toByte(), 0x08.toByte(),         // USAGE_PAGE (LEDs)
-        0x19.toByte(), 0x01.toByte(),         // USAGE_MINIMUM (Num Lock)
-        0x29.toByte(), 0x05.toByte(),         // USAGE_MAXIMUM (Kana)
-        0x91.toByte(), 0x02.toByte(),         // OUTPUT (Data,Var,Abs)
-        0x95.toByte(), 0x01.toByte(),         // REPORT_COUNT (1)
-        0x75.toByte(), 0x03.toByte(),         // REPORT_SIZE (3)
-        0x91.toByte(), 0x03.toByte(),         // OUTPUT (Cnst,Var,Abs)
         0x95.toByte(), 0x06.toByte(),         // REPORT_COUNT (6)
         0x75.toByte(), 0x08.toByte(),         // REPORT_SIZE (8)
         0x15.toByte(), 0x00.toByte(),         // LOGICAL_MINIMUM (0)
@@ -37,12 +28,11 @@ object HidDescriptor {
         0x81.toByte(), 0x00.toByte(),         // INPUT (Data,Ary,Abs)
         0xc0.toByte(),                       // END_COLLECTION
 
-        // Multi-touch Digitizer (Precision Touchpad)
+        // Multi-touch Digitizer (Report ID 2)
         0x05.toByte(), 0x0d.toByte(),         // USAGE_PAGE (Digitizers)
-        0x09.toByte(), 0x05.toByte(),         // USAGE (Touch Pad)
+        0x09.toByte(), 0x04.toByte(),         // USAGE (Touch Screen)
         0xa1.toByte(), 0x01.toByte(),         // COLLECTION (Application)
         0x85.toByte(), 0x02.toByte(),         // REPORT_ID (2)
-        0x05.toByte(), 0x0d.toByte(),         // USAGE_PAGE (Digitizers)
         0x09.toByte(), 0x22.toByte(),         // USAGE (Finger)
         0xa1.toByte(), 0x02.toByte(),         // COLLECTION (Logical)
         0x09.toByte(), 0x42.toByte(),         // USAGE (Tip Switch)
