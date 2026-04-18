@@ -3,8 +3,9 @@
 <br>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Project_Nanda-Magic_Trackpad-BB86FC?style=for-the-badge&labelColor=0A0A0A">
-  <img alt="Project Nanda" src="https://img.shields.io/badge/Project_Nanda-Magic_Trackpad-BB86FC?style=for-the-badge&labelColor=0A0A0A">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
+  <img alt="Project Nanda" src="assets/logo.svg" width="420">
 </picture>
 
 <br><br>
@@ -187,6 +188,10 @@ project-nanda/
           strings.xml             # String resources
       AndroidManifest.xml
     build.gradle
+  assets/
+    logo.svg                      # Dark mode logo
+    logo-light.svg                # Light mode logo
+    icon.svg                      # App icon
   build.gradle                    # Root build configuration
   settings.gradle                 # Project settings
   gradle.properties               # Build properties
