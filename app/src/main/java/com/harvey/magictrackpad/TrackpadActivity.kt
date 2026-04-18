@@ -31,8 +31,9 @@ class TrackpadActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         
         setContentView(R.layout.activity_main)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         
+        // Fullscreen & Stealth
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val lp = window.attributes
         lp.screenBrightness = 0.01f
         window.attributes = lp
@@ -41,33 +42,26 @@ class TrackpadActivity : AppCompatActivity() {
             bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
 
-        val trackpad = findViewById<View>(R.id.trackpad_surface)
-        trackpad.setOnTouchListener { v, event ->
-            handleTouch(event, v)
-            true
-        }
-
+        val trackpadSurface = findViewById<View>(R.id.trackpad_surface)
+        
         val gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onLongPress(e: MotionEvent) {
                 showKeyboard()
             }
         })
         
-        trackpad.setOnTouchListener { v, event ->
+        trackpadSurface.setOnTouchListener { view, event ->
             gestureDetector.onTouchEvent(event)
-            handleTouch(event, v)
+            
+            val action = event.actionMasked
+            val isDown = action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_CANCEL
+            
+            val x = (event.x / view.width * 4095).toInt().coerceIn(0, 4095)
+            val y = (event.y / view.height * 4095).toInt().coerceIn(0, 4095)
+
+            hidService?.sendTouchReport(x, y, isDown)
             true
         }
-    }
-
-    private fun handleTouch(event: MotionEvent, v: View) {
-        val action = event.actionMasked
-        val isDown = action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_CANCEL
-        
-        val x = (event.x / v.width * 4095).toInt().coerceIn(0, 4095)
-        val y = (event.y / v.height * 4095).toInt().coerceIn(0, 4095)
-
-        hidService?.sendTouchReport(x, y, isDown)
     }
 
     private fun showKeyboard() {
@@ -76,24 +70,21 @@ class TrackpadActivity : AppCompatActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        val hidKey = mapToHid(keyCode)
-        if (hidKey != 0.toByte()) {
-            hidService?.sendKeyboardReport(0, hidKey)
-            return true
-        }
-        return super.onKeyDown(keyCode, event)
-    }
-
-    private fun mapToHid(keyCode: Int): Byte {
-        return when (keyCode) {
+        val hidKey = when (keyCode) {
             KeyEvent.KEYCODE_A -> 0x04.toByte()
             KeyEvent.KEYCODE_B -> 0x05.toByte()
             KeyEvent.KEYCODE_C -> 0x06.toByte()
             KeyEvent.KEYCODE_ENTER -> 0x28.toByte()
             KeyEvent.KEYCODE_DEL -> 0x2a.toByte()
             KeyEvent.KEYCODE_SPACE -> 0x2c.toByte()
-            else -> 0
+            else -> 0.toByte()
         }
+        
+        if (hidKey != 0.toByte()) {
+            hidService?.sendKeyboardReport(0, hidKey)
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     override fun onDestroy() {

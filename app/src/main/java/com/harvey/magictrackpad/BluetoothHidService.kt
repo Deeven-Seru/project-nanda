@@ -12,18 +12,18 @@ class BluetoothHidService : Service() {
     private var bluetoothHidDevice: BluetoothHidDevice? = null
     private var connectedDevice: BluetoothDevice? = null
 
-    private val binder = LocalBinder()
-
     inner class LocalBinder : Binder() {
         fun getService(): BluetoothHidService = this@BluetoothHidService
     }
+
+    private val binder = LocalBinder()
 
     override fun onBind(intent: Intent): IBinder = binder
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate()
-        val adapter = BluetoothAdapter.getDefaultAdapter()
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return
         adapter.getProfileProxy(this, object : BluetoothProfile.ServiceListener {
             override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
                 if (profile == BluetoothProfile.HID_DEVICE) {
@@ -45,7 +45,7 @@ class BluetoothHidService : Service() {
             "Project Nanda",
             "Magic Trackpad Emulator",
             "Harvey",
-            BluetoothHidDevice.SUBCLASS1_COMBO,
+            0xC0.toByte(), // SUBCLASS1_COMBO
             HidDescriptor.DESCRIPTOR
         )
         bluetoothHidDevice?.registerApp(sdp, null, null, mainExecutor, object : BluetoothHidDevice.Callback() {
@@ -62,6 +62,7 @@ class BluetoothHidService : Service() {
 
     @SuppressLint("MissingPermission")
     fun sendTouchReport(x: Int, y: Int, isDown: Boolean) {
+        val device = connectedDevice ?: return
         val report = ByteArray(5)
         report[0] = if (isDown) 1.toByte() else 0.toByte()
         report[1] = (x and 0xFF).toByte()
@@ -69,20 +70,19 @@ class BluetoothHidService : Service() {
         report[3] = (y and 0xFF).toByte()
         report[4] = ((y shr 8) and 0xFF).toByte()
         
-        connectedDevice?.let {
-            bluetoothHidDevice?.sendReport(it, 2, report)
-        }
+        bluetoothHidDevice?.sendReport(device, 2, report)
     }
 
     @SuppressLint("MissingPermission")
     fun sendKeyboardReport(modifier: Byte, key: Byte) {
+        val device = connectedDevice ?: return
         val report = ByteArray(8)
         report[0] = modifier
         report[2] = key
-        connectedDevice?.let {
-            bluetoothHidDevice?.sendReport(it, 1, report)
-            // Send empty report to release key
-            bluetoothHidDevice?.sendReport(it, 1, ByteArray(8))
-        }
+        bluetoothHidDevice?.sendReport(device, 1, report)
+        
+        // Key release
+        val releaseReport = ByteArray(8)
+        bluetoothHidDevice?.sendReport(device, 1, releaseReport)
     }
 }
