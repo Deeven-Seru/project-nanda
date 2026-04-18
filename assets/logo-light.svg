@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" fill="none">
+  <defs>
+    <linearGradient id="surface-l" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F5F5F5"/>
+      <stop offset="100%" stop-color="#E8E8E8"/>
+    </linearGradient>
+    <linearGradient id="accent-l" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00A88A"/>
+      <stop offset="100%" stop-color="#007799"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Trackpad body -->
+  <rect x="24" y="28" width="104" height="104" rx="20" fill="url(#surface-l)" stroke="#D0D0D0" stroke-width="1.5"/>
+
+  <!-- Inner surface -->
+  <rect x="34" y="38" width="84" height="84" rx="12" fill="#EEEEEE" stroke="#DDDDDD" stroke-width="0.75"/>
+
+  <!-- Touch point -->
+  <circle cx="76" cy="72" r="6" fill="url(#accent-l)" opacity="0.9"/>
+  <circle cx="76" cy="72" r="12" fill="url(#accent-l)" opacity="0.12"/>
+  <circle cx="76" cy="72" r="20" fill="url(#accent-l)" opacity="0.05"/>
+
+  <!-- Cursor trail -->
+  <path d="M58 90 L68 80 L76 72" stroke="url(#accent-l)" stroke-width="1" stroke-linecap="round" opacity="0.35"/>
+
+  <!-- Wordmark -->
+  <text x="156" y="72" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="38" font-weight="700" fill="#1A1A1A" letter-spacing="4">NANDA</text>
+
+  <!-- Tagline -->
+  <text x="156" y="100" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#999999" letter-spacing="6">MAGIC TRACKPAD</text>
+
+</svg>
