@@ -30,41 +30,40 @@ class TrackpadActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Stealth Mode: Pure Black & Min Brightness
         setContentView(R.layout.activity_main)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
         val lp = window.attributes
         lp.screenBrightness = 0.01f
         window.attributes = lp
 
-        // Bind Service
         Intent(this, BluetoothHidService::class.java).also { intent ->
             bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
 
         val trackpad = findViewById<View>(R.id.trackpad_surface)
         trackpad.setOnTouchListener { v, event ->
-            handleTouch(event)
+            handleTouch(event, v)
             true
         }
 
-        // Long press for Keyboard
         val gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onLongPress(e: MotionEvent) {
                 showKeyboard()
             }
         })
-        trackpad.setOnGenericMotionListener { v, event ->
+        
+        trackpad.setOnTouchListener { v, event ->
             gestureDetector.onTouchEvent(event)
+            handleTouch(event, v)
             true
         }
     }
 
-    private fun handleTouch(event: MotionEvent) {
+    private fun handleTouch(event: MotionEvent, v: View) {
         val action = event.actionMasked
         val isDown = action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_CANCEL
         
-        // Map 0..width/height to 0..4095 (HID Range)
         val x = (event.x / v.width * 4095).toInt().coerceIn(0, 4095)
         val y = (event.y / v.height * 4095).toInt().coerceIn(0, 4095)
 
@@ -77,7 +76,6 @@ class TrackpadActivity : AppCompatActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // Map Android KeyCodes to HID Usage Codes
         val hidKey = mapToHid(keyCode)
         if (hidKey != 0.toByte()) {
             hidService?.sendKeyboardReport(0, hidKey)
@@ -87,7 +85,6 @@ class TrackpadActivity : AppCompatActivity() {
     }
 
     private fun mapToHid(keyCode: Int): Byte {
-        // Basic mapping (A=4, B=5, etc.)
         return when (keyCode) {
             KeyEvent.KEYCODE_A -> 0x04.toByte()
             KeyEvent.KEYCODE_B -> 0x05.toByte()
