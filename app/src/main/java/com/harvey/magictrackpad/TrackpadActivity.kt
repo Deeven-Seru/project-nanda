@@ -7,8 +7,11 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.*
 import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -27,11 +30,14 @@ class TrackpadActivity : AppCompatActivity() {
     private var touchDownTime = 0L
     private var touchDownX = 0f
     private var touchDownY = 0f
+    private var twoFingerTapTime = 0L
 
-    private val SENSITIVITY = 1.8f
+    private val SENSITIVITY = 2.0f
     private val TAP_THRESHOLD_MS = 200
-    private val TAP_MOVE_THRESHOLD = 20f
-    private val SCROLL_SENSITIVITY = 0.5f
+    private val TAP_MOVE_THRESHOLD = 25f
+    private val SCROLL_SENSITIVITY = 1.2f
+
+    private lateinit var hiddenInput: EditText
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -58,29 +64,35 @@ class TrackpadActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_trackpad)
         statusView = findViewById(R.id.trackpad_status)
+        hiddenInput = findViewById(R.id.hidden_input)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        // Load saved brightness or default to very dim
         val prefs = getSharedPreferences(SetupActivity.PREFS_NAME, Context.MODE_PRIVATE)
         val savedBrightness = prefs.getInt("brightness", 1)
         setBrightness(savedBrightness)
 
-        // Brightness slider
         val slider = findViewById<SeekBar>(R.id.brightness_slider)
         slider.progress = savedBrightness
         slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) setBrightness(progress)
             }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                prefs.edit().putInt("brightness", seekBar?.progress ?: 1).apply()
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+            override fun onStopTrackingTouch(sb: SeekBar?) {
+                prefs.edit().putInt("brightness", sb?.progress ?: 1).apply()
             }
         })
 
-        // Keyboard button
-        findViewById<View>(R.id.keyboard_button).setOnClickListener { showKeyboard() }
+        // Keyboard button — focuses hidden EditText and shows soft keyboard
+        findViewById<View>(R.id.keyboard_button).setOnClickListener {
+            hiddenInput.requestFocus()
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(hiddenInput, InputMethodManager.SHOW_IMPLICIT)
+        }
+
+        // Capture typed characters from soft keyboard
+        setupKeyboardCapture()
 
         // Bind HID service
         try {
@@ -100,6 +112,99 @@ class TrackpadActivity : AppCompatActivity() {
         }
         updateStatus("Starting...")
     }
+
+    private fun setupKeyboardCapture() {
+        hiddenInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (count > 0 && s != null && start + count <= s.length) {
+                    val typed = s.subSequence(start, start + count).toString()
+                    for (ch in typed) {
+                        sendCharAsHid(ch)
+                    }
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {
+                // Clear to keep the field clean
+                if (s != null && s.length > 10) {
+                    s.clear()
+                }
+            }
+        })
+
+        // Catch special keys (backspace, enter) via key listener
+        hiddenInput.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                val hidKey = mapSpecialKey(keyCode)
+                if (hidKey != 0.toByte()) {
+                    try { hidService?.sendKeyboardReport(0, hidKey) } catch (_: Exception) {}
+                    return@setOnKeyListener true
+                }
+            }
+            false
+        }
+    }
+
+    private fun sendCharAsHid(ch: Char) {
+        val (modifier, key) = charToHid(ch)
+        if (key != 0.toByte()) {
+            try { hidService?.sendKeyboardReport(modifier, key) } catch (_: Exception) {}
+        }
+    }
+
+    private fun charToHid(ch: Char): Pair<Byte, Byte> {
+        // Returns (modifier, keycode)
+        return when (ch) {
+            in 'a'..'z' -> Pair(0, (0x04 + (ch - 'a')).toByte())
+            in 'A'..'Z' -> Pair(0x02, (0x04 + (ch - 'A')).toByte()) // Left Shift
+            in '1'..'9' -> Pair(0, (0x1E + (ch - '1')).toByte())
+            '0' -> Pair(0, 0x27.toByte())
+            ' ' -> Pair(0, 0x2C.toByte())  // SPACE
+            '\n' -> Pair(0, 0x28.toByte()) // ENTER
+            '\t' -> Pair(0, 0x2B.toByte()) // TAB
+            '-' -> Pair(0, 0x2D.toByte())
+            '=' -> Pair(0, 0x2E.toByte())
+            '[' -> Pair(0, 0x2F.toByte())
+            ']' -> Pair(0, 0x30.toByte())
+            '\\' -> Pair(0, 0x31.toByte())
+            ';' -> Pair(0, 0x33.toByte())
+            '\'' -> Pair(0, 0x34.toByte())
+            '`' -> Pair(0, 0x35.toByte())
+            ',' -> Pair(0, 0x36.toByte())
+            '.' -> Pair(0, 0x37.toByte())
+            '/' -> Pair(0, 0x38.toByte())
+            '!' -> Pair(0x02, 0x1E.toByte())
+            '@' -> Pair(0x02, 0x1F.toByte())
+            '#' -> Pair(0x02, 0x20.toByte())
+            '$' -> Pair(0x02, 0x21.toByte())
+            '%' -> Pair(0x02, 0x22.toByte())
+            '^' -> Pair(0x02, 0x23.toByte())
+            '&' -> Pair(0x02, 0x24.toByte())
+            '*' -> Pair(0x02, 0x25.toByte())
+            '(' -> Pair(0x02, 0x26.toByte())
+            ')' -> Pair(0x02, 0x27.toByte())
+            '_' -> Pair(0x02, 0x2D.toByte())
+            '+' -> Pair(0x02, 0x2E.toByte())
+            ':' -> Pair(0x02, 0x33.toByte())
+            '"' -> Pair(0x02, 0x34.toByte())
+            '<' -> Pair(0x02, 0x36.toByte())
+            '>' -> Pair(0x02, 0x37.toByte())
+            '?' -> Pair(0x02, 0x38.toByte())
+            else -> Pair(0, 0.toByte())
+        }
+    }
+
+    private fun mapSpecialKey(keyCode: Int): Byte = when (keyCode) {
+        KeyEvent.KEYCODE_DEL -> 0x2A
+        KeyEvent.KEYCODE_ENTER -> 0x28
+        KeyEvent.KEYCODE_TAB -> 0x2B
+        KeyEvent.KEYCODE_ESCAPE -> 0x29
+        KeyEvent.KEYCODE_DPAD_UP -> 0x52
+        KeyEvent.KEYCODE_DPAD_DOWN -> 0x51
+        KeyEvent.KEYCODE_DPAD_LEFT -> 0x50
+        KeyEvent.KEYCODE_DPAD_RIGHT -> 0x4F
+        else -> 0
+    }.toByte()
 
     private fun setBrightness(level: Int) {
         val lp = window.attributes
@@ -124,16 +229,19 @@ class TrackpadActivity : AppCompatActivity() {
                 if (pointerCount >= 2) {
                     scrolling = true
                     tracking = false
-                    lastScrollY = event.getY(0)
+                    twoFingerTapTime = System.currentTimeMillis()
+                    // Average Y of both fingers
+                    lastScrollY = (event.getY(0) + event.getY(1)) / 2f
                 }
             }
             MotionEvent.ACTION_MOVE -> {
                 if (scrolling && pointerCount >= 2) {
-                    val currentY = event.getY(0)
-                    val scrollAmount = ((lastScrollY - currentY) * SCROLL_SENSITIVITY).toInt()
+                    val avgY = (event.getY(0) + event.getY(1)) / 2f
+                    val deltaY = lastScrollY - avgY
+                    val scrollAmount = (deltaY * SCROLL_SENSITIVITY).toInt()
                     if (scrollAmount != 0) {
                         try { hidService?.sendScroll(scrollAmount) } catch (_: Exception) {}
-                        lastScrollY = currentY
+                        lastScrollY = avgY
                     }
                 } else if (tracking && pointerCount == 1 && !scrolling) {
                     val dx = ((event.x - lastX) * SENSITIVITY).toInt()
@@ -160,10 +268,15 @@ class TrackpadActivity : AppCompatActivity() {
                 scrolling = false
             }
             MotionEvent.ACTION_POINTER_UP -> {
-                if (pointerCount <= 2) {
-                    scrolling = false
-                    tracking = false
+                // Two-finger tap = right click
+                if (pointerCount == 2) {
+                    val elapsed = System.currentTimeMillis() - twoFingerTapTime
+                    if (elapsed < TAP_THRESHOLD_MS) {
+                        try { hidService?.sendClick(2) } catch (_: Exception) {} // Right click
+                    }
                 }
+                scrolling = false
+                tracking = false
             }
             MotionEvent.ACTION_CANCEL -> {
                 tracking = false
@@ -175,46 +288,6 @@ class TrackpadActivity : AppCompatActivity() {
     private fun updateStatus(msg: String) {
         runOnUiThread { statusView?.text = msg }
     }
-
-    private fun showKeyboard() {
-        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        val hidKey = mapKeyCode(keyCode)
-        if (hidKey != 0.toByte()) {
-            try { hidService?.sendKeyboardReport(0, hidKey) } catch (_: Exception) {}
-            return true
-        }
-        return super.onKeyDown(keyCode, event)
-    }
-
-    private fun mapKeyCode(keyCode: Int): Byte = when (keyCode) {
-        KeyEvent.KEYCODE_A -> 0x04; KeyEvent.KEYCODE_B -> 0x05
-        KeyEvent.KEYCODE_C -> 0x06; KeyEvent.KEYCODE_D -> 0x07
-        KeyEvent.KEYCODE_E -> 0x08; KeyEvent.KEYCODE_F -> 0x09
-        KeyEvent.KEYCODE_G -> 0x0A; KeyEvent.KEYCODE_H -> 0x0B
-        KeyEvent.KEYCODE_I -> 0x0C; KeyEvent.KEYCODE_J -> 0x0D
-        KeyEvent.KEYCODE_K -> 0x0E; KeyEvent.KEYCODE_L -> 0x0F
-        KeyEvent.KEYCODE_M -> 0x10; KeyEvent.KEYCODE_N -> 0x11
-        KeyEvent.KEYCODE_O -> 0x12; KeyEvent.KEYCODE_P -> 0x13
-        KeyEvent.KEYCODE_Q -> 0x14; KeyEvent.KEYCODE_R -> 0x15
-        KeyEvent.KEYCODE_S -> 0x16; KeyEvent.KEYCODE_T -> 0x17
-        KeyEvent.KEYCODE_U -> 0x18; KeyEvent.KEYCODE_V -> 0x19
-        KeyEvent.KEYCODE_W -> 0x1A; KeyEvent.KEYCODE_X -> 0x1B
-        KeyEvent.KEYCODE_Y -> 0x1C; KeyEvent.KEYCODE_Z -> 0x1D
-        KeyEvent.KEYCODE_1 -> 0x1E; KeyEvent.KEYCODE_2 -> 0x1F
-        KeyEvent.KEYCODE_3 -> 0x20; KeyEvent.KEYCODE_4 -> 0x21
-        KeyEvent.KEYCODE_5 -> 0x22; KeyEvent.KEYCODE_6 -> 0x23
-        KeyEvent.KEYCODE_7 -> 0x24; KeyEvent.KEYCODE_8 -> 0x25
-        KeyEvent.KEYCODE_9 -> 0x26; KeyEvent.KEYCODE_0 -> 0x27
-        KeyEvent.KEYCODE_ENTER -> 0x28; KeyEvent.KEYCODE_ESCAPE -> 0x29
-        KeyEvent.KEYCODE_DEL -> 0x2A; KeyEvent.KEYCODE_TAB -> 0x2B
-        KeyEvent.KEYCODE_SPACE -> 0x2C
-        KeyEvent.KEYCODE_COMMA -> 0x36; KeyEvent.KEYCODE_PERIOD -> 0x37
-        else -> 0
-    }.toByte()
 
     override fun onDestroy() {
         super.onDestroy()
